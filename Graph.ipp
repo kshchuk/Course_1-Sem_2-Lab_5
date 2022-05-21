@@ -6,16 +6,20 @@
 #define INFINITY INT_MAX
 
 
-AdjacencyMatrixGraph::AdjacencyMatrixGraph(size_t vertices_number, bool isOriented, bool isWeighted) {
-	adjacency_matrix = new int* [vertices_number + 1];
+AdjacencyMatrixGraph::AdjacencyMatrixGraph(size_t vertices_number, bool isOriented, bool isWeighted) 
+{
 	for (size_t i = 0; i < vertices_number; i++) {
-		adjacency_matrix[i] = new int[vertices_number + 1];
-		for (size_t j = 0; j < vertices_number; j++)
-			adjacency_matrix[i][j] = 0;
+		adjacency_matrix.push_back(std::vector<int>(vertices_number, 0));
 	}
 	this->vertices_number = vertices_number;
 	this->isOriented = isOriented;
 	this->isWeighted = isWeighted;
+}
+
+inline AdjacencyMatrixGraph::AdjacencyMatrixGraph(std::vector<std::vector<int>> matrix)
+{
+	this->adjacency_matrix = matrix;
+	this->vertices_number = matrix.size();
 }
 
 inline AdjacencyMatrixGraph::AdjacencyMatrixGraph(AdjacencyStructGraph<true> graph)
@@ -24,11 +28,8 @@ inline AdjacencyMatrixGraph::AdjacencyMatrixGraph(AdjacencyStructGraph<true> gra
 	this->isWeighted = true;
 
 	vertices_number = graph.adjacency_list.size();
-	adjacency_matrix = new int* [vertices_number];
 	for (size_t i = 0; i < vertices_number; i++) {
-		adjacency_matrix[i] = new int[vertices_number];
-		for (size_t j = 0; j < vertices_number; j++)
-			adjacency_matrix[i][j] = 0;
+		adjacency_matrix.push_back(std::vector<int>(vertices_number, 0));
 	}
 
 	for (size_t i = 0; i < vertices_number; i++)
@@ -46,11 +47,8 @@ inline AdjacencyMatrixGraph::AdjacencyMatrixGraph(AdjacencyStructGraph<false> gr
 	this->isOriented = graph.isOriented;
 
 	vertices_number = graph.adjacency_list.size();
-	adjacency_matrix = new int* [vertices_number];
 	for (size_t i = 0; i < vertices_number; i++) {
-		adjacency_matrix[i] = new int[vertices_number];
-		for (size_t j = 0; j < vertices_number; j++)
-			adjacency_matrix[i][j] = 0;
+		adjacency_matrix.push_back(std::vector<int>(vertices_number, 0));
 	}
 
 	for (size_t i = 0; i < vertices_number; i++)
@@ -114,7 +112,8 @@ inline std::vector<int> AdjacencyMatrixGraph::dijkstrasAlgorithm(size_t from, si
 		cost[i] = new int[vertices_number];
 	}
 	int* visited = new int[vertices_number], * pred = new int[vertices_number], * distance = new int[vertices_number];
-	int count, mindistance, nextnode, i, j;
+	int count, mindistance, i, j;
+	int nextnode;
 
 	for (i = 0; i < vertices_number; i++)
 		for (j = 0; j < vertices_number; j++)
@@ -132,14 +131,19 @@ inline std::vector<int> AdjacencyMatrixGraph::dijkstrasAlgorithm(size_t from, si
 	visited[from] = 1;
 
 	count = 1;
-	while (count < vertices_number - 1) {
+	while (count < vertices_number - 2) {
 		mindistance = INFINITY;
 		for (i = 0; i < vertices_number; i++)
 			if (distance[i] < mindistance && !visited[i]) {
 				mindistance = distance[i];
 				nextnode = i;
 			}
-		visited[nextnode] = 1;
+		try {
+			visited[nextnode] = 1;
+		}
+		catch (...) {
+			visited[nextnode] = 1;
+		}
 		for (i = 0; i < vertices_number; i++)
 			if (!visited[i])
 				if (mindistance + cost[nextnode][i] < distance[i]) {
@@ -229,6 +233,53 @@ inline std::vector<std::vector<int>> AdjacencyMatrixGraph::dijkstrasAlgorithm(si
 	delete[] cost, visited, pred, distance;
 
 	return paths;
+}
+
+inline AdjacencyMatrixGraph AdjacencyMatrixGraph::kruskal()
+{
+	std::vector< std::vector<int> > tempMatrix(this->adjacency_matrix);
+	std::vector< std::vector<int> > spanningTreeMatr(vertices_number);
+	std::vector<int> belongsToTree(vertices_number);
+
+	for (int i = 0; i < vertices_number; i++) {
+		spanningTreeMatr[i] = std::vector<int>(vertices_number, INFINITY);
+		belongsToTree[i] = i;
+	}
+
+	int nodoA;
+	int nodoB;
+	int arcos = 1;
+	while (arcos < vertices_number - 1) {
+
+		int min = INFINITY;
+		for (int i = 0; i < vertices_number; i++)
+			for (int j = 0; j < vertices_number; j++)
+				if (min > tempMatrix[i][j] && belongsToTree[i] != belongsToTree[j] && tempMatrix[i][j] != 0) {
+					min = tempMatrix[i][j];
+					nodoA = i;
+					nodoB = j;
+				}
+
+		if (belongsToTree[nodoA] != belongsToTree[nodoB]) {
+			spanningTreeMatr[nodoA][nodoB] = min;
+			spanningTreeMatr[nodoB][nodoA] = min;
+
+			int temp = belongsToTree[nodoB];
+			belongsToTree[nodoB] = belongsToTree[nodoA];
+			for (int k = 0; k < vertices_number; k++)
+				if (belongsToTree[k] == temp)
+					belongsToTree[k] = belongsToTree[nodoA];
+			arcos++;
+		}
+	}
+	for (auto& line : spanningTreeMatr) {
+		for (auto& edge : line) {
+			if (edge == INFINITY)
+				edge = 0;
+		}
+	}
+
+	return AdjacencyMatrixGraph(spanningTreeMatr);
 }
 
 inline bool AdjacencyMatrixGraph::bfs(size_t to, std::vector<bool>& used, std::list<int>& buffer, 
@@ -384,6 +435,28 @@ inline bool AdjacencyStructGraph<true>::hasCyclesByDFS(size_t vertex, std::vecto
 	return false;
 }
 
+inline void AdjacencyStructGraph<false>::topologicalSortUtil(int vertex, bool visited[], std::stack<int>& Stack)
+{
+	visited[vertex] = true;
+
+	for (auto edge : adjacency_list[vertex])
+		if (!visited[edge])
+			topologicalSortUtil(edge, visited, Stack);
+
+	Stack.push(vertex);
+}
+
+inline void AdjacencyStructGraph<true>::topologicalSortUtil(int vertex, bool visited[], std::stack<int>& Stack)
+{
+	visited[vertex] = true;
+
+	for (auto edge : adjacency_list[vertex])
+		if (!visited[edge.destination])
+			topologicalSortUtil(edge.destination, visited, Stack);
+
+	Stack.push(vertex);
+}
+
 template<bool isWeighted>
 inline AdjacencyStructGraph<isWeighted>::AdjacencyStructGraph(size_t vertices_number,  bool isOriented)
 {
@@ -399,6 +472,32 @@ inline AdjacencyStructGraph<true>::AdjacencyStructGraph(AdjacencyMatrixGraph gra
 			if (graph.adjacency_matrix[i][j] > 0)
 				adjacency_list[i].push_back(Edge(j, graph.adjacency_matrix[i][j]));
 	this->isOriented = graph.isOriented;
+}
+
+template<bool isWeighted>
+inline std::vector<int> AdjacencyStructGraph<isWeighted>::topologicalSort()
+{
+	size_t vertexNum = adjacency_list.size();
+	std::stack<int> Stack;
+
+	bool* visited = new bool[vertexNum];
+	for (int i = 0; i < vertexNum; i++)
+		visited[i] = false;
+
+	for (int i = 0; i < vertexNum; i++)
+		if (visited[i] == false)
+			topologicalSortUtil(i, visited, Stack);
+
+	std::vector<int> sorted;
+	while (Stack.empty() == false)
+	{
+
+		sorted.push_back(Stack.top());
+		Stack.pop();
+	}
+
+	delete[] visited;
+	return sorted;
 }
 
 inline AdjacencyStructGraph<false>::Node* AdjacencyStructGraph<false>::node_by_number(std::list<Node*>& graph, int edge)

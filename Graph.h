@@ -1,18 +1,19 @@
 ﻿#pragma once
 #include <vector>
 #include <queue>
+#include <stack>
 #include <list>
 #include <type_traits>
 
 
-template<bool isWeight>
+template<bool isWeighted>
 class AdjacencyStructGraph;
 
 // Block 0: 1
 class AdjacencyMatrixGraph
 {
 private:
-	int** adjacency_matrix;
+	std::vector<std::vector<int>> adjacency_matrix;
 	int vertices_number = 0;
 	bool isOriented, isWeighted;
 
@@ -32,6 +33,7 @@ private:
 
 public:
 	AdjacencyMatrixGraph(size_t vertices_number, bool isOriented = false, bool isWeighted = false);
+	AdjacencyMatrixGraph(std::vector < std::vector<int> >  matrix);
 	AdjacencyMatrixGraph(AdjacencyStructGraph<true> graph);
 	AdjacencyMatrixGraph(AdjacencyStructGraph<false> graph);
 
@@ -49,8 +51,14 @@ public:
 	// Block 3: 14
 	// Returns path
 	std::vector<int> dijkstrasAlgorithm(size_t from, size_t to);
+
+	// Block 3: 14
 	// Return all paths
 	std::vector<std::vector<int>> dijkstrasAlgorithm(size_t from);
+
+	// Block 6: 21
+	// Returns new adjacency matrix of the minimum spanning tree
+	AdjacencyMatrixGraph kruskal();
 };
 
 AdjacencyMatrixGraph GenerateRandomAdjacencyMatrixGraph(size_t verticesNum,
@@ -80,7 +88,7 @@ private:
 
 	friend class AdjacencyMatrixGraph;
 
-	// Helping structure for graph passing or another way of graph presentation
+	// Helping structure for graph passing or another way of graph presentation ( big crutch 🙃 )
 	struct Node
 	{
 		edge_data_type* edge;
@@ -96,7 +104,6 @@ private:
 			delete edge;
 		}
 	};
-
 	Node* node_by_number(std::list<Node*>& graph, int edge);
 
 	// Block 2: 13
@@ -109,6 +116,8 @@ private:
 	// Block 1: 7
 	bool hasCyclesByDFS(size_t vertix, std::vector<int>& colors, std::vector<int>& from);
 
+	void topologicalSortUtil(int vertex, bool visited[], std::stack<int>& Stack);
+
 public:
 	AdjacencyStructGraph(size_t vertices_number, bool isOriented = false);
 	AdjacencyStructGraph(AdjacencyMatrixGraph graph);
@@ -119,6 +128,10 @@ public:
 	// Block 2: 13
 	// Returns path 
 	std::vector<int> getPathByBFS(size_t from, size_t to);
+
+	// Block 4: 17
+	// Kan's algorithm
+	std::vector<int> topologicalSort();	
 
 	void print();
 };
